@@ -102,14 +102,16 @@ lazy val global = project
 lazy val shared = project
   .settings(
     settings,
-    libraryDependencies ++= commonDependencies
+    libraryDependencies ++= commonDependencies,
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
 
 lazy val jvm = project
   .settings(
     settings,
     packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
-    packGenerateWindowsBatFile := false
+    packGenerateWindowsBatFile := false,
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
   .enablePlugins(PackPlugin)
   .dependsOn(shared)
@@ -118,7 +120,8 @@ lazy val graalvm = project
   .settings(
     settings,
     packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
-    packGenerateWindowsBatFile := false
+    packGenerateWindowsBatFile := false,
+    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
   )
   .enablePlugins(PackPlugin)
   .dependsOn(shared)
