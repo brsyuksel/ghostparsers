@@ -62,10 +62,15 @@ final class JobQueue private (Q: TQueue[Job], S: TRef[TreeMap[String, JobStatus]
     for {
       now <- clock.currentTime(TimeUnit.MILLISECONDS)
       t   <- S.get.commit
-      expireds = t.filter(_._2.completedAt.exists(_ >= now + TTL)).keys.toList
-      updated  = expireds.foldLeft(t)(_ - _)
+      e = t
+        .filter(_._2.completedAt.nonEmpty)
+        .map(t => (t._1, t._2.completedAt.getOrElse(0L)))
+        .filter(_._2 + TTL <= now)
+        .keys
+        .toList
+      updated = e.foldLeft(t)(_ - _)
       _ <- S.set(updated).commit
-      _ <- info(s"completed ${expireds.length} job' statuses has been cleared").when(expireds.nonEmpty)
+      _ <- info(s"completed ${e.length} job' statuses has been cleared").when(e.nonEmpty)
     } yield ()
 
   override def queued: ZIO[Clock with Logger, Throwable, Int] =
