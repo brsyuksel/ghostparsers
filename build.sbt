@@ -83,48 +83,35 @@ lazy val compilerOptions = Seq(
   "-Ycache-macro-class-loader:last-modified" // and macro definitions. This can lead to performance improvements.
 )
 
-lazy val commonSettings = Seq(
-  scalacOptions ++= compilerOptions
+lazy val settings = Seq(
+  scalacOptions ++= compilerOptions,
+  libraryDependencies ++= commonDependencies,
+  testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
 )
 
-lazy val settings =
-  commonSettings
-
-lazy val global = project
-  .in(file("."))
-  .settings(
-    name := "ghostparsers",
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework")),
-    settings
-  )
-  .aggregate(shared, jvm, graalvm)
+lazy val packSettings = Seq(
+  packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
+  packGenerateWindowsBatFile := false
+)
 
 lazy val shared = project
-  .settings(
-    settings,
-    libraryDependencies ++= commonDependencies,
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
-  )
+  .settings(settings)
 
 lazy val jvm = project
   .settings(
-    settings,
-    packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
-    packGenerateWindowsBatFile := false,
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+    settings ++ packSettings
   )
   .enablePlugins(PackPlugin)
   .dependsOn(shared)
+  .aggregate(shared)
 
 lazy val graalvm = project
   .settings(
-    settings,
-    packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
-    packGenerateWindowsBatFile := false,
-    testFrameworks := Seq(new TestFramework("zio.test.sbt.ZTestFramework"))
+    settings ++ packSettings
   )
   .enablePlugins(PackPlugin)
   .dependsOn(shared)
+  .aggregate(shared)
 
 /*
 native-image \
