@@ -137,3 +137,142 @@ Response:
     "completed_at": "2020-03-02T11:41:35.116Z"
 }
 ```
+
+### scripting
+
+ghostparsers requires a javascript code in order to evaulate on every read line. you have to provide code when creating job request,
+it should be at `source` field in payload.
+
+a quote from graalvm official documentation about JavaScript compatibility:
+
+> GraalVM includes an ECMAScript compliant JavaScript engine. It is designed to be fully standard compliant ...
+
+your source code just needs to have only 2 functions: `map` and `reduce`. these two functions takes a string parameter which
+holds a JSON data and returns a string which holds a JSON data as well. Both returned json data's values should be string.
+
+#### map function
+
+`map` function takes a string value that it actually holds a JSON data which associated with the header and the line in your source file (csv, xls, xlsx).
+you can prepare a new map data by using prodived. `map` function should also return a string that holds JSON.
+
+return value object should like:
+```javascript
+{data: your_mapped_data, groupBy: null}
+```
+
+assume that your csv file looks like below:
+```csv
+a,b,c,d
+1,2,3,4
+2,3,4,5
+3,4,5,6
+```
+
+your `map` function will take a JSON data as parameter on first line, like:
+```json
+{"a": "1", "b": "2", "c": "3", "d": "4"}
+```
+
+so your `map` function can be defined like below:
+```javascript
+function map(d) {
+    let data = JSON.parse(d);
+    
+    let a = parseInt(data["a"]);
+    let b = parseInt(data["b"]);
+    let c = parseInt(data["c"]);
+    let d = parseInt(data["d"]);
+
+    let total = a + b + c + d;
+    let is_a_odd = a % 2 == 1;
+    let is_b_odd = b % 2 == 1;
+    let is_c_odd = c % 2 == 1;
+    let is_d_odd = d % 2 == 1;
+
+    let out = {
+        total: total.toString(),
+        a: is_a_odd.toString(),
+        b: is_b_odd.toString(),
+        c: is_c_odd.toString(),
+        d: is_d_odd.toString()
+    };
+
+    let ret = {data: out, groupBy: null};
+    return JSON.stringify(ret);
+}
+```
+
+after mapping lines by function above, you will have a csv file like:
+```csv
+a,b,c,d,total
+true,false,true,false,10
+false,true,false,true,14
+true,false,true,false,18
+```
+
+#### reduce function
+
+when your `map` function indicates the data that should be grouped by a key via `groupBy` property, ghostparsers holds the
+mapped data together in a list. after completing parsing file, these grouped data will be passed to `reduce` function as a
+list.
+
+assume that you have a csv like below:
+```csv
+id,amount,installment
+charge1,100,3
+charge2,25,1
+charge3,10,1
+charge1,100,3
+charge4,15,1
+charge1,100,3
+```
+
+you can see that `charge1` payments are splitted and reported line-by-line. if you want to merge these lines, your `map`
+function should inform ghostparsers that they will be grouped.
+
+```javascript
+function map(d) {
+    let data = JSON.parse(d);
+    
+    let out = {
+        id: data["id"],
+        amount: data["amount"]
+    };
+    
+    let installment = parseInt(data["installment"]);
+
+    var groupBy = null;
+    if(installment > 1) {
+        groupBy = data["id"];
+    }
+
+    let ret = {data: out, groupBy: groupBy}
+}
+```
+
+after parsing entire file, your `reduce` function will be invoked with a list that contains grouped lines.
+for our example, the input data will be like below:
+
+```json
+[
+  {"id": "charge1", "amount": "100"},
+  {"id": "charge1", "amount": "100"},
+  {"id": "charge1", "amount": "100"}
+]
+```
+
+so your `reduce` function merge these three lines into a line:
+```javascript
+function reduce(d) {
+    let data = JSON.parse(d);
+    val ret = data.reduce((acc, e) => {
+        let total = parseFloat(acc["amount"]) + parseFloat(e["amount"]);
+        acc["amount"] = total.toString();
+        return acc;
+    });
+    
+    // in reduce function, you should return only data,
+    // you don't need to envelope it into another object as like map function.
+    return JSON.stringify(ret);
+}
+```
