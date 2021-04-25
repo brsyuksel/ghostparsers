@@ -1,4 +1,4 @@
-organization in ThisBuild := "paytrek"
+organization in ThisBuild := "brsyuksel"
 scalaVersion in ThisBuild := "2.13.1"
 version in ThisBuild := "0.1.0"
 
@@ -90,7 +90,7 @@ lazy val settings = Seq(
 )
 
 lazy val packSettings = Seq(
-  packMain := Map("ghostparsers" -> "paytrek.ghostparsers.main"),
+  packMain := Map("ghostparsers" -> "brsyuksel.ghostparsers.main"),
   packGenerateWindowsBatFile := false
 )
 
